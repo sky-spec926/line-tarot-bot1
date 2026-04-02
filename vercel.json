@@ -1,10 +1,1 @@
-{
-  "version": 2
-}
-```
-
----
-
-### ③ デプロイ後、LINEのWebhook URLを変更
-```
-https://line-tarot-bot1.vercel.app/webhook
+{"version": 2}
