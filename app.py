@@ -39,7 +39,7 @@ HELP_MESSAGE = """📖 使い方
 
 【コマンド】
 「タロット」「はじめる」→ ウェルカムメッセージ
-「ヘルプ」「使い方」    → この説明 🌙"""
+「ヘルプ」「使い方」　 → この説明 🌙"""
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -54,7 +54,6 @@ def webhook():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     text = event.message.text.strip()
-
     if text in ["タロット", "占い", "はじめる", "スタート", "start", "hello", "こんにちは"]:
         reply = WELCOME_MESSAGE
     elif text in ["ヘルプ", "使い方", "help", "?"]:
@@ -62,17 +61,19 @@ def handle_message(event):
     elif len(text) >= 5:
         cards = draw_three_cards()
         display = format_cards_for_display(cards)
-        ai_input = format_cards_for_ai(cards)
-        reading = get_tarot_reading(question=text, cards_text=ai_input)
+        reading = get_tarot_reading(
+            question=text,
+            cards_text=format_cards_for_ai(cards)
+        )
         reply = f"{display}\n\n{reading}"
     else:
-        reply = "🔮 占いたいことを教えてください！\n例：「仕事運を教えて」「今月の恋愛運は？」\n\n「ヘルプ」と送ると使い方を確認できます。"
+        reply = "🔮 占いたいことを教えてください！\n例：「仕事運を教えて」「今月の恋愛運は？」"
 
     with ApiClient(configuration) as api_client:
         MessagingApi(api_client).reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=reply)],
+                messages=[TextMessage(text=reply)]
             )
         )
 
