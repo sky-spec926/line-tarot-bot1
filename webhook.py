@@ -1,6 +1,4 @@
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
+import os
 from flask import Flask, request, abort
 from linebot.v3 import WebhookHandler
 from linebot.v3.messaging import (
@@ -9,8 +7,8 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
-from lib.tarot import draw_three_cards, format_cards_for_display, format_cards_for_ai
-from lib.ai import get_tarot_reading
+from tarot import draw_three_cards, format_cards_for_display, format_cards_for_ai
+from ai import get_tarot_reading
 
 app = Flask(__name__)
 
@@ -43,7 +41,6 @@ HELP_MESSAGE = """📖 使い方
 「タロット」「はじめる」→ ウェルカムメッセージ
 「ヘルプ」「使い方」    → この説明 🌙"""
 
-# ✅ 修正ポイント：Vercelはサーバーレス関数に "/" としてリクエストを渡す
 @app.route("/", methods=["POST"])
 def webhook():
     signature = request.headers.get("X-Line-Signature", "")
