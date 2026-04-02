@@ -41,7 +41,7 @@ HELP_MESSAGE = """📖 使い方
 「タロット」「はじめる」→ ウェルカムメッセージ
 「ヘルプ」「使い方」    → この説明 🌙"""
 
-@app.route("/", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     signature = request.headers.get("X-Line-Signature", "")
     body = request.get_data(as_text=True)
