@@ -76,6 +76,105 @@ def handle_message(event):
                 messages=[TextMessage(text=reply)]
             )
         )
+from fastapi import FastAPI, Request, HTTPException
+import httpx
+import os
+import hmac
+import hashlib
+import base64
+import json
 
+app = FastAPI()
+
+# 環境変数
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+DIFY_API_KEY = os.getenv("DIFY_API_KEY")
+DIFY_API_URL = os.getenv("DIFY_API_URL")
+
+
+# LINE署名検証
+def verify_signature(body, signature):
+    hash = hmac.new(
+        LINE_CHANNEL_SECRET.encode('utf-8'),
+        body,
+        hashlib.sha256
+    ).digest()
+    expected_signature = base64.b64encode(hash).decode()
+
+    return hmac.compare_digest(expected_signature, signature)
+
+
+# Difyに送信
+async def send_to_dify(user_id, message):
+    headers = {
+        "Authorization": f"Bearer {DIFY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "inputs": {},
+        "query": message,
+        "response_mode": "blocking",
+        "user": user_id
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(DIFY_API_URL, headers=headers, json=payload)
+        data = response.json()
+
+    return data.get("answer", "すみません、うまく占えませんでした。")
+
+
+# LINEに返信
+async def reply_to_line(reply_token, text):
+    url = "https://api.line.me/v2/bot/message/reply"
+
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "replyToken": reply_token,
+        "messages": [
+            {
+                "type": "text",
+                "text": text
+            }
+        ]
+    }
+
+    async with httpx.AsyncClient() as client:
+        await client.post(url, headers=headers, json=body)
+
+
+# Webhook
+@app.post("/callback")
+async def callback(request: Request):
+    body = await request.body()
+    signature = request.headers.get("X-Line-Signature")
+
+    # 署名チェック
+    if not verify_signature(body, signature):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    data = json.loads(body)
+
+    events = data.get("events", [])
+
+    for event in events:
+        if event["type"] == "message" and event["message"]["type"] == "text":
+            user_id = event["source"]["userId"]
+            reply_token = event["replyToken"]
+            user_message = event["message"]["text"]
+
+            # Difyに送信
+            ai_response = await send_to_dify(user_id, user_message)
+
+            # LINEに返信
+            await reply_to_line(reply_token, ai_response)
+
+    return {"status": "ok"}
 if __name__ == "__main__":
     app.run(port=8000, debug=True)
